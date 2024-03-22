@@ -1,0 +1,299 @@
+---
+title: "Dados EIB - Ensino Médio - Retirada de itens"
+author: "eduLab21®️ (Ana C e Gustavo)"
+date: "Relatório produzido em: `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    css: style.css
+    theme: united
+    includes:
+      in_header: logo.html
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: false
+    code_folding: hide
+    code_download: true
+link-citations: true
+---
+
+```{r setup, warning=FALSE, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r pacotes_db}
+# Pacotes -----------------------------------------------------------------
+library(haven)
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(stringr)
+library(careless)
+library(summarytools)
+library(htmltools)
+library(lubridate)
+library(lavaan)
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Importar banco (Alterar para Knit > Knit directory > Project directory)
+# dt_hol <- read_sav("data-raw/Banco EIB 27042020_v final.sav")
+# saveRDS(dt_hol, "dt_hol_EIB.RDS")
+
+dt_hol <- readRDS("data/dt_hol_EIB.RDS")
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Checar de nomes
+names(dt_hol)
+
+dt_hol %>%
+  dplyr::select(starts_with("EIB")) %>% 
+  names()
+
+```
+
+```{r eval=TRUE, include=FALSE}
+# Escolaridade: 1 = EF incompleto, 2 = EF completo, 3 = EM, 4 = ES, 5 = Especialização, 6 = Mestrado, 7 = Doutorado
+
+# Grupo: 1 = Adulto, 2 = Adolescentes
+
+# Modalidade = 1 = online, 2 = presencial
+
+# Sexo: 1 = homem, 2 = mulher
+
+# Serie-semestre: 1 - 1 ano EM, 2 = 2 ano EM, 3 = 3 ano EM, 4 = EM concluído
+
+# Checar N amostral por idades das tabelas de normas
+freq(dt_hol$Idade)
+
+freq(dt_hol$Grupo) # 2: N = 670 adolescentes das normas do manual
+
+dt_hol %>% 
+  group_by(Grupo) %>% 
+  freq(Série_semestre) # Apenas categorias do grupo 2 (var Grupo) tem n pois o grupo 1 já está com o EM concluído
+
+```
+
+# Separando os grupos
+
+```{r}
+
+dt_hol_teen <- dt_hol %>% 
+  filter(Grupo == 2)
+
+dt_hol_adultos <- dt_hol %>% 
+  filter(Grupo == 1)
+```
+
+```{r}
+
+```
+
+# Análise fatorial - Todos os dados juntos
+
+</br>
+
+```{r eval=TRUE, echo=FALSE}
+
+v_eib <- dt_hol %>%
+  dplyr::select(starts_with("EIB")) %>% 
+  colnames()
+
+efa_hol_all <- efa(dt_hol_teen, nfactors = 1:6, rotation = "geomin", ov.names= v_eib, ordered=TRUE)
+
+summary(efa_hol_all, standardized = TRUE)
+```
+
+# Análise fatorial - Todos os itens
+
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R <- efa(
+  dt_hol_teen, 
+  nfactors = 5, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    "EIB26",
+    "EIB48",
+    "EIB70_15",
+    "EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R)
+```
+
+# Análise fatorial - Excluindo os dois itens
+
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R_limpo <- efa(
+  dt_hol_teen, 
+  nfactors = 5, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15",
+    #"EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R_limpo, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R_limpo)
+```
+
+# Análise fatorial confirmatória - Todos os itens
+
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+natureza =~ EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+tecnologia =~ EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+seguranca =~ EIB4 + EIB48 + EIB70_15
+esporte =~ EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+'
+
+
+# rodar AFE
+cfa_hol_R <- sem(
+  dt_hol_teen,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+fitMeasures(cfa_hol_R)
+```
+
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+natureza =~ EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+tecnologia =~ EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+seguranca =~ EIB4 + EIB48 + EIB70_15
+esporte =~ EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+ 
+R =~ manual + natureza + tecnologia + seguranca + esporte
+'
+
+
+# rodar AFE
+cfa_hol_R <- sem(
+  dt_hol_teen,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+fitMeasures(cfa_hol_R)
+```
+
+
+
+
+adultos
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ NA*EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+manual ~~ 1*manual
+natureza =~ NA*EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+natureza ~~ 1*natureza
+tecnologia =~ NA*EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+tecnologia ~~ 1*tecnologia
+seguranca =~ NA*EIB4 + EIB48 + EIB70_15
+seguranca ~~ 1*seguranca
+esporte =~ NA*EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+esporte ~~ 1*esporte
+
+ 
+R =~ manual + natureza + tecnologia + seguranca + esporte
+'
+
+
+# rodar AFE
+cfa_hol_R <- sem(
+  dt_hol_adultos,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+fitMeasures(cfa_hol_R)
+modindices(cfa_hol_R, sort. = T)
+```
+
+Passos: (com adultos junto, menos descritivas)
+
+1.  Com todos os itens funciona
+
+2.  Sem os dois itens só funciona com "oblimin"
+
+3.  Os índices não estão tão bons
+
+4.  Gerar precisão
+
+5.  Correlacionar com os outros instrumentos para validade
+
+6.  Gerar descritivas para ver se muda muito
+
+7. Fazer todos os passos com e sem faceta

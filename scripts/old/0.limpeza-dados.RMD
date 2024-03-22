@@ -1,0 +1,323 @@
+---
+title: "Dados EIB - 9º ano - Limpeza dos dados"
+author: "eduLab21®️ (Ana C e Gustavo)"
+date: "Relatório produzido em: `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    css: style.css
+    theme: united
+    includes:
+      in_header: logo.html
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: false
+    code_folding: hide
+    code_download: true
+link-citations: true
+---
+
+```{r setup, warning=FALSE, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r pacotes_db}
+# Pacotes -----------------------------------------------------------------
+library(haven)
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(stringr)
+library(careless)
+library(summarytools)
+library(htmltools)
+library(lubridate)
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Importar banco (Alterar para Knit > Knit directory > Project directory)
+dt_hol <- read_excel("data-raw/1. banco-eib-ms-9ano.xlsx")
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Limpeza de nomes
+dt_hol_clean <- dt_hol %>% 
+  clean_names()
+
+dt_hol_clean <- dt_hol_clean %>% 
+  rename_all(~stringr::str_replace(.,"^selecione_apenas_uma_das_opcoes_de_1_a_5_atentando_se_sempre_para_as_legendas_1_nao_gosto_nada_2_nao_gosto_3_gosto_pouco_4_gosto_5_gosto_muito_","eib_"))
+
+names(dt_hol_clean)
+```
+
+```{r eval=TRUE, include=FALSE}
+# Checar número de colunas EIB
+dt_hol_clean %>% 
+  select(starts_with("eib")) # 110 colunas
+```
+
+# Relatório com dados completos
+
+</br>
+
+```{r eval=TRUE, echo=FALSE}
+# Criar variável de ID
+dt_hol_clean$id <- 1:nrow(dt_hol_clean)
+  
+dt_hol_clean <- dt_hol_clean %>% 
+  select(id, everything())
+```
+
+1.  Checagem de dados duplicados em todas as linhas
+
+-   Não existem casos com linhas que contenham dados totalmente iguais entre si
+
+```{r eval=TRUE, echo=FALSE, include = FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, -id)
+
+```
+
+</br>
+
+2.  Checagem de dados duplicados por matrícula SG
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, qual_o_numero_do_seu_codigo_sgde)
+```
+
+</br>
+
+3.  Checagem de dados duplicados por matrícula SG e gênero
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, qual_o_numero_do_seu_codigo_sgde, como_voce_se_identifica)
+```
+
+</br>
+
+4.  Checagem de dados duplicados por matrícula SG, gênero e data de nascimento
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, qual_o_numero_do_seu_codigo_sgde, como_voce_se_identifica, qual_e_a_data_do_seu_nascimento)
+```
+
+</br>
+
+5.  Checagem de dados duplicados por matrícula SG, gênero, data de nascimento e escola
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, qual_o_numero_do_seu_codigo_sgde, como_voce_se_identifica, qual_e_a_data_do_seu_nascimento, qual_e_a_sua_escola)
+```
+
+</br>
+
+6.  Checagem de dados duplicados por matrícula SG, gênero, data de nascimento, turma, município e escola
+
+-   Casos a serem removidos: 837356 (id 1276), 895401 (id 285), 898485 (id 217), 904937 (id 300), 1001903 (id 783), 1063055 (id 779), 1073952 (id 35), 1115456 (id 247), 1149793 (id 645), 1279938 (id 776)
+-   Critério: Remover o segundo caso duplicado c("1276", "285", "217", "300", "783", "779", "35", "247", '645', "776")
+-   N final = *2590 participantes*
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de dados duplicados
+get_dupes(dt_hol_clean, qual_o_numero_do_seu_codigo_sgde, como_voce_se_identifica, qual_e_a_data_do_seu_nascimento, qual_e_a_sua_escola, qual_a_sua_turma, qual_o_seu_municipio)
+```
+
+```{r eval=TRUE, echo=FALSE}
+# Checar id dos casos para removê-los
+dt_hol_clean %>% 
+  filter(qual_o_numero_do_seu_codigo_sgde %in% c("837356", "895401", "898485", "904937", "1001903", "1063055", "1073952", "1115456", "1149793", "1279938")) %>% 
+  select(id, qual_o_numero_do_seu_codigo_sgde) %>% 
+  print()
+```
+
+```{r eval=TRUE, echo=FALSE, include = FALSE}
+# Remover os casos: 837356 (id 1276), 895401 (id 285), 898485 (id 217), 904937 (id 300), 1001903 (id 783), 1063055 (id 779), 1073952 (id 35), 1115456 (id 247), 1149793 (id 645), 1279938 (id 776)
+
+dt_hol_clean_2 <- dt_hol_clean %>% 
+ filter(!id %in% c("1276", "285", "217", "300", "783", "779", "35", "247", '645', "776"))
+```
+
+</br>
+
+7.  Checagem de respostas descuidadas
+
+```{r eval=TRUE, echo=FALSE, include = FALSE}
+# Checagem de respostas descuidadas
+# separar apenas EIB
+
+dt_hol_clean_eib <- dt_hol_clean_2 %>% 
+  select(starts_with("eib"))
+
+dt_hol_clean_eib$careless <- longstring(dt_hol_clean_eib, avg = FALSE)
+```
+
+-   *2.2%* dos estudantes responderam mais do que a metade do questionário com a mesma resposta consecutivamente
+
+```{r eval=TRUE, echo=FALSE}
+freq(dt_hol_clean_eib$careless)
+
+```
+
+</br>
+
+# Exclusão de acordo com critério de idade
+
+-   N = 1041 para validar EIB com 14 anos no 9º ano
+-   N = 2075 para testar invariância do modelo posteriormente com estudantes de 14, 15 e 16 anos
+
+```{r eval=TRUE, echo=FALSE}
+# Calcular a idade dos estudantes
+
+dt_hol_clean_2$ano_nascimento <- year(dt_hol_clean_2$qual_e_a_data_do_seu_nascimento)
+
+dt_hol_clean_2$idade <- 2022 - dt_hol_clean_2$ano_nascimento
+  
+freq(dt_hol_clean_2$idade)
+
+```
+
+```{r}
+# Geração de banco de dados com N = 1041 pessoas
+dt_hol_clean_14 <- dt_hol_clean_2 %>% 
+  filter(idade == 14)
+```
+
+```{r}
+# Geração de banco de dados com N = 2075 pessoas
+dt_hol_clean_14_16 <- dt_hol_clean_2 %>% 
+  filter(idade %in% c(14, 15, 16))
+```
+
+# Excluir escolas
+
+-   N final após exclusão de escolas = 1039 estudantes com 14 anos
+
+Exclusão de estudantes das seguintes categorias em qual_e_a_sua_escolar:
+
+-   ASSESSORIA DE COMUNICAÇÃO
+-   ASSESSORIA DE EVENTOS
+-   CONVENIO APAE/IGUATEMI
+-   CONVENIO APAE / CORONEL SAPUCAIA
+-   ESCOLAS ESTADUAIS
+-   GESTÃO DE PROCESSO DE AVALIAÇÃO DE DESEMPENHO INDIVIDUAL
+-   LADÁRIO
+-   SETOR DE MATRÍCULA
+-   TODOS OS SETORES
+
+```{r}
+# 1041 
+dt_hol_clean_14 <- dt_hol_clean_14 %>% 
+  filter(!qual_e_a_sua_escola %in% c("ASSESSORIA DE COMUNICAÇÃO",
+                                    "ASSESSORIA DE EVENTOS",
+                                    "CONVENIO  APAE/IGUATEMI",
+                                    "CONVENIO APAE / CORONEL SAPUCAIA",
+                                    "ESCOLAS ESTADUAIS",
+                                    "GESTÃO DE PROCESSO DE AVALIAÇÃO DE DESEMPENHO INDIVIDUAL",
+                                    "LADÁRIO",
+                                    "SETOR DE MATRÍCULA",
+                                    "TODOS OS SETORES"
+                                    ))
+# 1039
+
+```
+
+-   N final após exclusão de escolas = 2068 estudantes com 14-16 anos 
+
+```{r}
+# 2075
+dt_hol_clean_14_16 <- dt_hol_clean_14_16 %>% 
+  filter(!qual_e_a_sua_escola %in% c("ASSESSORIA DE COMUNICAÇÃO",
+                                    "ASSESSORIA DE EVENTOS",
+                                    "CONVENIO  APAE/IGUATEMI",
+                                    "CONVENIO APAE / CORONEL SAPUCAIA",
+                                    "ESCOLAS ESTADUAIS",
+                                    "GESTÃO DE PROCESSO DE AVALIAÇÃO DE DESEMPENHO INDIVIDUAL",
+                                    "LADÁRIO",
+                                    "SETOR DE MATRÍCULA",
+                                    "TODOS OS SETORES"
+                                    ))
+# 2068
+
+```
+
+```{r}
+# Salvar banco - O código permance comentado para não dar override nos arquivos de banco de dados
+# library(writexl)
+# 
+# saveRDS(dt_hol_cleanChe_14, 'dt_hol_clean_14.RDS')
+# saveRDS(dt_hol_clean_14_16, 'dt_hol_clean_14_16.RDS')
+# 
+# write_xlsx(dt_hol_clean_14, 'dt_hol_clean_14.xlsx')
+# write_xlsx(dt_hol_clean_14_16, 'dt_hol_clean_14_16.xlsx')
+
+```
+
+# Descritivas a partir da limpeza do banco de dados
+
+-   N = 1039 participantes com 14 anos.
+
+-   Existem 15 municípios.
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de número de municipios
+length(unique(dt_hol_clean_14$qual_o_seu_municipio))
+```
+
+-   Existem 66 escolas.
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de número de escolas
+length(unique(dt_hol_clean_14$qual_e_a_sua_escola))
+```
+
+-   Existe apenas uma turma: 9º ano escolar.
+
+```{r eval=TRUE, echo=FALSE}
+# Checagem de número de turmas
+length(unique(dt_hol_clean_14$qual_a_sua_turma))
+```
+- A amostra é composta por 39.6% meninos e 60.4% meninas.
+```{r eval=TRUE, echo=FALSE}
+# Checagem de meninos e meninas
+freq(dt_hol_clean_14$como_voce_se_identifica)
+```
+
+```{r eval=FALSE, echo=FALSE, include = FALSE}
+freq(dt_hol_clean_2$como_voce_se_identifica)
+```
+```{r eval=FALSE, echo=FALSE, include = FALSE}
+# Checagem de respostas descuidadas
+# separar apenas EIB
+
+# dt_hol_clean_careless <- dt_hol_clean_2 %>% 
+#   select(id, como_voce_se_identifica, starts_with("eib"))
+# 
+# v_eib <- dt_hol_clean_eib %>% 
+#   dplyr::select(starts_with("eib")) %>% 
+#   colnames()
+# 
+# dt_hol_clean_careless$careless <- longstring(dt_hol_clean_careless[,v_eib], avg = FALSE)
+# 
+# summary(dt_hol_clean_careless$careless)
+# 
+# t.test(careless ~ como_voce_se_identifica, data = dt_hol_clean_careless)
+# 
+# dt_hol_clean_careless %>% 
+#   group_by(como_voce_se_identifica) %>% 
+#   summarize(mean = mean(careless, na.rm=TRUE),
+#             sd = sd(careless, na.rm=TRUE))
+# 
+# dt_hol_clean_careless %>% 
+#   group_by(como_voce_se_identifica) %>% 
+#   freq(careless)
+
+```
+
+

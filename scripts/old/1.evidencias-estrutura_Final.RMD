@@ -1,0 +1,1079 @@
+---
+title: "Dados EIB - Ensino Médio - Retirada de itens"
+author: "eduLab21®️ (Ana C e Gustavo)"
+date: "Relatório produzido em: `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    css: style.css
+    theme: united
+    includes:
+      in_header: logo.html
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: false
+    code_folding: hide
+    code_download: true
+link-citations: true
+---
+
+```{r setup, warning=FALSE, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r pacotes_db}
+# Pacotes -----------------------------------------------------------------
+library(haven)
+library(summarytools)
+library(dplyr)
+library(lavaan)
+library(jmv)
+library(reactable)
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Antes de importar o banco, alteramos alguns erros de digitação no banco do SPSS
+# eib92 - 23 ok
+# eib14 - 55 ok
+# eib37 - 35 ok
+# eib106 - 6 ok
+# eib36 - 6 ok
+
+# Importar banco (Alterar para Knit > Knit directory > Project directory)
+# dt_hol <- read_sav("data-raw/Banco EIB 27042020_v final.sav")
+# saveRDS(dt_hol, "dt_hol_EIB.RDS")
+
+dt_hol <- readRDS("data/dt_hol_EIB.RDS")
+```
+
+```{r eval=TRUE, echo=FALSE, include=FALSE}
+# Checar de nomes
+names(dt_hol)
+
+dt_hol %>%
+  dplyr::select(starts_with("EIB")) %>% 
+  names()
+```
+
+```{r eval=TRUE, include=FALSE}
+# Escolaridade: 1 = EF incompleto, 2 = EF completo, 3 = EM, 4 = ES, 5 = Especialização, 6 = Mestrado, 7 = Doutorado
+
+# Grupo: 1 = Adulto, 2 = Adolescentes
+
+# Modalidade = 1 = online, 2 = presencial
+
+# Sexo: 1 = homem, 2 = mulher
+
+# Serie-semestre: 1 - 1 ano EM, 2 = 2 ano EM, 3 = 3 ano EM, 4 = EM concluído
+
+# Checar N amostral por idades das tabelas de normas
+freq(dt_hol$Idade)
+
+freq(dt_hol$Grupo) # 2: N = 670 adolescentes das normas do manual
+
+dt_hol %>% 
+  group_by(Grupo) %>% 
+  freq(Série_semestre) # Apenas categorias do grupo 2 (var Grupo) tem n pois o grupo 1 já está com o EM concluído
+```
+
+```{r}
+# separar grupos
+dt_hol_teen <- dt_hol %>% 
+  filter(Grupo == 2)
+
+dt_hol_adultos <- dt_hol %>% 
+  filter(Grupo == 1)
+```
+
+# Esclarecimentos
+
+Assim como no manual do instrumento, as análises de validade e precisão foram realizadas com a amostra de adolescentes e adultos (N = 1009). Para as normas foi considerada apenas a amostra de adolescentes (n = 670).
+
+Itens que devem ser removidos:
+
+26- Participar de perseguições em alta velocidade
+
+92- Usar uma arma de fogo (revólver)
+
+Passos:
+
+1.  AFE com todos os itens do tipo Realista e cinco fatores
+
+2.  AFE removendo 2 itens do tipo Realista e cinco fatores
+
+3.  AFC hierárquica com todos os itens do tipo Realista e cinco fatores e um geral
+
+4.  AFC hierárquica removendo 2 itens do tipo Realista e cinco fatores e um geral
+
+5.  Gerar precisão para os fatores do tipo Realista, com e sem os 2 itens
+
+6.  Correlacionar com os outros instrumentos para validade externa
+
+7.  Gerar descritivas para com e sem os 2 itens
+
+8.  Realizar as mesmas análises considerando um cenário sem a faceta "Segurança"
+
+OBS: no lavaan os índices de ajuste que devem ser considerados são os "scaled"
+
+# Validade - estrutura interna {.tabset .tabset-fade}
+
+## AFE todos os itens - Realista
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R <- lavaan::efa(
+  dt_hol, 
+  nfactors = 5, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    "EIB26",
+    "EIB48",
+    "EIB70_15",
+    "EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R)
+```
+
+## AFE excluindo 2 itens - Realista
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R_limpo <- lavaan::efa(
+  dt_hol, 
+  nfactors = 5, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15",
+    #"EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R_limpo, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R_limpo)
+```
+
+
+## AFC todos os itens - Realista
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ NA*EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+manual ~~ 1*manual
+natureza =~ NA*EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+natureza ~~ 1*natureza
+tecnologia =~ NA*EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+tecnologia ~~ 1*tecnologia
+seguranca =~ NA*EIB4 + EIB26 + EIB48 + EIB70_15 + EIB92_37
+seguranca ~~ 1*seguranca
+esporte =~ NA*EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+esporte ~~ 1*esporte
+
+R =~ manual + natureza + tecnologia + seguranca + esporte
+'
+
+# rodar AFC
+cfa_hol_R <- sem(
+  dt_hol,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+```
+
+
+## AFC excluindo dois itens - Realista
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ NA*EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+manual ~~ 1*manual
+natureza =~ NA*EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+natureza ~~ 1*natureza
+tecnologia =~ NA*EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+tecnologia ~~ 1*tecnologia
+seguranca =~ NA*EIB4 + EIB48 + EIB70_15
+seguranca ~~ 1*seguranca
+esporte =~ NA*EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+esporte ~~ 1*esporte
+ 
+R =~ manual + natureza + tecnologia + seguranca + esporte
+'
+
+# rodar AFC
+cfa_hol_R <- sem(
+  dt_hol,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+```
+
+# Precisão {.tabset .tabset-fade}
+
+## Segurança - Todos os itens
+```{r}
+# Rodar consistência interna
+jmv::reliability(
+  data = dt_hol,
+  vars = vars(
+    EIB4,
+    EIB26,
+    EIB48,
+    EIB70_15,
+    EIB92_37
+  ),
+  omegaScale = TRUE,
+  alphaItems = TRUE,
+  omegaItems = TRUE
+)
+```
+
+## Segurança - Excluindo 2 itens
+```{r}
+# Rodar consistência interna
+jmv::reliability(
+  data = dt_hol,
+  vars = vars(
+    EIB4,
+    EIB48,
+    EIB70_15
+  ),
+  omegaScale = TRUE,
+  alphaItems = TRUE,
+  omegaItems = TRUE
+)
+```
+
+
+## Realista - Todos os itens
+```{r}
+# Rodar consistência interna
+jmv::reliability(
+  data = dt_hol,
+  vars = vars(
+    EIB1,
+    EIB23,
+    EIB45,
+    EIB67_12,
+    EIB89_34,
+    EIB2,
+    EIB24,
+    EIB46,
+    EIB68_13,
+    EIB90_35,
+    EIB3,
+    EIB25,
+    EIB47,
+    EIB69_14,
+    EIB91_36,
+    EIB4,
+    EIB26,
+    EIB48,
+    EIB70_15,
+    EIB92_37,
+    EIB5,
+    EIB27,
+    EIB49,
+    EIB71_16,
+    EIB93_38
+  ),
+  omegaScale = TRUE,
+  alphaItems = TRUE,
+  omegaItems = TRUE
+)
+```
+
+## Realista - Excluindo 2 itens
+```{r}
+# Rodar consistência interna
+jmv::reliability(
+  data = dt_hol,
+  vars = vars(
+    EIB1,
+    EIB23,
+    EIB45,
+    EIB67_12,
+    EIB89_34,
+    EIB2,
+    EIB24,
+    EIB46,
+    EIB68_13,
+    EIB90_35,
+    EIB3,
+    EIB25,
+    EIB47,
+    EIB69_14,
+    EIB91_36,
+    EIB4,
+    EIB48,
+    EIB70_15,
+    EIB5,
+    EIB27,
+    EIB49,
+    EIB71_16,
+    EIB93_38
+  ),
+  omegaScale = TRUE,
+  alphaItems = TRUE,
+  omegaItems = TRUE
+)
+```
+
+
+# Correlações {.tabset .tabset-fade}
+```{r Função corstars, include=FALSE}
+# x is a matrix containing the data
+# method : correlation method. "pearson"" or "spearman"" is supported
+# removeTriangle : remove upper or lower triangle
+# results :  if "html" or "latex"
+  # the results will be displayed in html or latex format
+corstars <-function(x, method=c("pearson", "spearman"), removeTriangle=c("upper", "lower"),
+                     result=c("none", "html", "latex")){
+    #Compute correlation matrix
+    require(Hmisc)
+    x <- as.matrix(x)
+    correlation_matrix<-rcorr(x, type=method[1])
+    R <- correlation_matrix$r # Matrix of correlation coeficients
+    p <- correlation_matrix$P # Matrix of p-value 
+    
+    ## Define notions for significance levels; spacing is important.
+    mystars <- ifelse(p < .001, "*** ", ifelse(p < .01, "**  ", ifelse(p < .05, "*   ", "    ")))
+    
+    ## trunctuate the correlation matrix to two decimal
+    R <- format(round(cbind(rep(-1.11, ncol(x)), R), 2))[,-1]
+    
+    ## build a new matrix that includes the correlations with their apropriate stars
+    Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+    diag(Rnew) <- paste(diag(R), " ", sep="")
+    rownames(Rnew) <- colnames(x)
+    colnames(Rnew) <- paste(colnames(x), "", sep="")
+    
+    ## remove upper triangle of correlation matrix
+    if(removeTriangle[1]=="upper"){
+      Rnew <- as.matrix(Rnew)
+      Rnew[upper.tri(Rnew, diag = TRUE)] <- ""
+      Rnew <- as.data.frame(Rnew)
+    }
+    
+    ## remove lower triangle of correlation matrix
+    else if(removeTriangle[1]=="lower"){
+      Rnew <- as.matrix(Rnew)
+      Rnew[lower.tri(Rnew, diag = TRUE)] <- ""
+      Rnew <- as.data.frame(Rnew)
+    }
+    
+    ## remove last column and return the correlation matrix
+    Rnew <- cbind(Rnew[1:length(Rnew)-1])
+    if (result[1]=="none") return(Rnew)
+    else{
+      if(result[1]=="html") print(xtable(Rnew), type="html")
+      else print(xtable(Rnew), type="latex") 
+    }
+} 
+```
+
+
+Aqui foram calculados os escores de Realista (realista_EIB_recod) e da faceta Segurança (R_segurança_recod), excluindo os dois itens.
+```{r}
+# calcular escore segurança
+dt_hol$R_segurança_recod <- apply(
+  dt_hol[,c(
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15"
+    #"EIB92_37"
+  )], 
+  1, 
+  sum
+)
+
+# calcular escore Realista
+dt_hol$realista_EIB_recod <- apply(
+  dt_hol[,c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15",
+    #"EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38")], 
+  1, 
+  sum
+)
+```
+
+
+## RIASEC
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "R_segurança",
+  "R_segurança_recod",
+  "realista_EIB",
+  "realista_EIB_recod",
+  "realista_18REST",
+  "realista_SDS"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+
+## EAP
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "R_segurança",
+  "R_segurança_recod",
+  "realista_EIB",
+  "realista_EIB_recod",
+  "cienExatas_EAP",
+  "artesComu_EAP",
+  "biologicas_saude_EAP",
+  "agrarias_ambientais_EAP",
+  "ativ_burocrática_EAP",
+  "hum_sociais_EAP",
+  "entretenimento_EAP"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+## BFI
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "R_segurança",
+  "R_segurança_recod",
+  "realista_EIB",
+  "realista_EIB_recod",
+  "Extroversao",
+  "Amabilidade",
+  "Conscienciosidade",
+  "Neuroticismo",
+  "Abertura"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+# Normas {.tabset .tabset-fade}
+```{r}
+# calcular escore segurança
+dt_hol$R_segurança_recod_mean <- apply(
+  dt_hol[,c(
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15"
+    #"EIB92_37"
+  )], 
+  1, 
+  mean
+)
+
+# calcular escore Realista
+dt_hol$realista_EIB_recod_mean <- apply(
+  dt_hol[,c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    #"EIB26",
+    "EIB48",
+    "EIB70_15",
+    #"EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38")], 
+  1, 
+  mean
+)
+
+
+### todos os itens
+# calcular escore segurança
+dt_hol$R_segurança_mean <- apply(
+  dt_hol[,c(
+    "EIB4",
+    "EIB26",
+    "EIB48",
+    "EIB70_15",
+    "EIB92_37"
+  )], 
+  1, 
+  mean
+)
+
+# calcular escore Realista
+dt_hol$realista_EIB_mean <- apply(
+  dt_hol[,c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB4",
+    "EIB26",
+    "EIB48",
+    "EIB70_15",
+    "EIB92_37",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38")], 
+  1, 
+  mean
+)
+```
+
+
+```{r}
+# separar grupos
+dt_hol_teen <- dt_hol %>% 
+  filter(Grupo == 2)
+
+dt_hol_adultos <- dt_hol %>% 
+  filter(Grupo == 1)
+```
+
+## Escores calculados pela soma
+```{r}
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    R_segurança, 
+    R_segurança_recod
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    realista_EIB, 
+    realista_EIB_recod
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+```
+
+## Escores calculados pela média
+```{r}
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    R_segurança_mean, 
+    R_segurança_recod_mean
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+
+
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    realista_EIB_mean, 
+    realista_EIB_recod_mean
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+```
+
+## Diferenças de média
+```{r}
+# Antes precisa mudar o nome da variável porque o jmv não aceita caracteres especiais
+dt_hol_teen_jmv <- dt_hol_teen %>% 
+  rename(c(R_seguranca_mean = R_segurança_mean,
+           R_seguranca_recod_mean = R_segurança_recod_mean))
+
+
+# Teste t de amostras pareadas
+jmv::ttestPS(
+    data = dt_hol_teen_jmv,
+    pairs = list(
+        list(
+            i1="R_seguranca_mean",
+            i2="R_seguranca_recod_mean")),
+    norm = TRUE,
+    wilcoxon = TRUE,
+    effectSize = TRUE,
+    desc = TRUE
+)
+
+# Teste t de amostras pareadas
+jmv::ttestPS(
+    data = dt_hol_teen_jmv,
+    pairs = list(
+        list(
+            i1="realista_EIB_mean",
+            i2="realista_EIB_recod_mean")),
+    norm = TRUE,
+    wilcoxon = TRUE,
+    effectSize = TRUE,
+    desc = TRUE
+)
+```
+
+
+# SEM A FACETA "Segurança"
+
+
+# Validade - estrutura interna {.tabset .tabset-fade}
+
+## AFE sem a faceta - Realista
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R <- lavaan::efa(
+  dt_hol, 
+  nfactors = 4, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R)
+```
+
+
+## AFC sem a faceta - Realista
+```{r eval=TRUE, echo=FALSE}
+# modelo
+modelo_R <- '
+manual =~ NA*EIB1 + EIB23 + EIB45 + EIB67_12 + EIB89_34
+manual ~~ 1*manual
+natureza =~ NA*EIB2 + EIB24 + EIB46 + EIB68_13 + EIB90_35
+natureza ~~ 1*natureza
+tecnologia =~ NA*EIB3 + EIB25 + EIB47 + EIB69_14 + EIB91_36
+tecnologia ~~ 1*tecnologia
+esporte =~ NA*EIB5 + EIB27 +  EIB49 + EIB71_16 + EIB93_38
+esporte ~~ 1*esporte
+
+R =~ manual + natureza + tecnologia + esporte
+'
+
+# rodar AFC
+cfa_hol_R <- sem(
+  dt_hol,
+  model = modelo_R,
+  rotation = "oblimin", 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(cfa_hol_R, standardized = TRUE, fit.measures = TRUE)
+```
+
+# Precisão {.tabset .tabset-fade}
+
+## Realista - sem a faceta
+```{r}
+# Rodar consistência interna
+jmv::reliability(
+  data = dt_hol,
+  vars = vars(
+    EIB1,
+    EIB23,
+    EIB45,
+    EIB67_12,
+    EIB89_34,
+    EIB2,
+    EIB24,
+    EIB46,
+    EIB68_13,
+    EIB90_35,
+    EIB3,
+    EIB25,
+    EIB47,
+    EIB69_14,
+    EIB91_36,
+    EIB5,
+    EIB27,
+    EIB49,
+    EIB71_16,
+    EIB93_38
+  ),
+  omegaScale = TRUE,
+  alphaItems = TRUE,
+  omegaItems = TRUE
+)
+```
+
+# Correlações {.tabset .tabset-fade}
+
+Aqui foram calculados os escores de Realista (realista_EIB_recod_SF) excluindo a faceta "Segurança".
+```{r}
+# calcular escore segurança
+dt_hol$realista_EIB_recod_SF <- apply(
+  dt_hol[,c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38")], 
+  1, 
+  sum
+)
+```
+
+
+## RIASEC
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "realista_EIB",
+  "realista_EIB_recod_SF",
+  "realista_18REST",
+  "realista_SDS"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+
+## EAP
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "realista_EIB",
+  "realista_EIB_recod_SF",
+  "cienExatas_EAP",
+  "artesComu_EAP",
+  "biologicas_saude_EAP",
+  "agrarias_ambientais_EAP",
+  "ativ_burocrática_EAP",
+  "hum_sociais_EAP",
+  "entretenimento_EAP"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+## BFI
+```{r message=FALSE, warning=FALSE}
+# rodar correlação
+cor <- corstars(dt_hol[,c(
+  "realista_EIB",
+  "realista_EIB_recod_SF",
+  "Extroversao",
+  "Amabilidade",
+  "Conscienciosidade",
+  "Neuroticismo",
+  "Abertura"
+)])
+
+# imprimir a tabela
+reactable(
+  cor,
+  defaultPageSize = 100
+)
+```
+
+# Normas {.tabset .tabset-fade}
+```{r}
+# calcular escore Realista
+dt_hol$realista_EIB_recod_SF_mean <- apply(
+  dt_hol[,c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38")], 
+  1, 
+  mean
+)
+```
+
+
+```{r}
+# separar grupos
+dt_hol_teen <- dt_hol %>% 
+  filter(Grupo == 2)
+
+dt_hol_adultos <- dt_hol %>% 
+  filter(Grupo == 1)
+```
+
+## Escores calculados pela soma
+```{r}
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    realista_EIB, 
+    realista_EIB_recod_SF
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+```
+
+## Escores calculados pela média
+```{r}
+jmv::descriptives(
+  data = dt_hol_teen,
+  vars = vars(
+    realista_EIB_mean, 
+    realista_EIB_recod_SF_mean
+  ),
+  mode = TRUE,
+  pcEqGr = TRUE,
+  pc = TRUE,
+  pcValues = "10, 20, 30, 40, 50, 60, 70, 80, 90"
+)
+```
+
+## Diferenças de média
+```{r}
+# Teste t de amostras pareadas
+jmv::ttestPS(
+    data = dt_hol_teen,
+    pairs = list(
+        list(
+            i1="realista_EIB_mean",
+            i2="realista_EIB_recod_SF_mean")),
+    norm = TRUE,
+    wilcoxon = TRUE,
+    effectSize = TRUE,
+    desc = TRUE
+)
+```
+
+
+
+# Análises extras
+
+Sem querer eu esqueci de trocar o número de facetas do tipo Realista de 5 para 4 depois de excluir a faceta "Segurança" e olha o que aconteceu.
+
+2- Cultivar uma horta
+
+24- Fazer mudas de plantas
+
+46- Alimentar animais em um zoológico
+
+68- Adestrar animais
+
+90- Percorrer uma trilha na natureza
+
+```{r eval=TRUE, echo=FALSE}
+# rodar AFE
+efa_hol_R <- lavaan::efa(
+  dt_hol, 
+  nfactors = 5, 
+  rotation = "oblimin", 
+  ov.names= c(
+    "EIB1",
+    "EIB23",
+    "EIB45",
+    "EIB67_12",
+    "EIB89_34",
+    "EIB2",
+    "EIB24",
+    "EIB46",
+    "EIB68_13",
+    "EIB90_35",
+    "EIB3",
+    "EIB25",
+    "EIB47",
+    "EIB69_14",
+    "EIB91_36",
+    "EIB5",
+    "EIB27",
+    "EIB49",
+    "EIB71_16",
+    "EIB93_38"
+  ), 
+  ordered=TRUE
+)
+
+# ver resultados
+summary(efa_hol_R, standardized = TRUE, fit.measures = TRUE, cutoff = 0.001)
+fitMeasures(efa_hol_R)
+```
