@@ -1,4 +1,5 @@
 # mentoria-r
+### Data analysis using R
 
 This ia 6-week workshop about data analysis using R. The workshop comprises theoretical and practical examples about:
   + What is R?
